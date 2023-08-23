@@ -65,6 +65,8 @@ import (
 	"github.com/patrickmn/go-cache"
 	uberAtomic "go.uber.org/atomic"
 	"google.golang.org/grpc"
+	"github.com/tillitis/tkeyclient"
+	"github.com/hashicorp/vault/tkey"
 )
 
 const (
@@ -247,6 +249,8 @@ type migrationInformation struct {
 type Core struct {
 	entCore
 
+	// Tillitis tkey 
+	tkeyDev tkey.Tkey
 	// The registry of builtin plugins is passed in here as an interface because
 	// if it's used directly, it results in import cycles.
 	builtinRegistry BuiltinRegistry
@@ -782,6 +786,13 @@ type CoreConfig struct {
 
 	ClusterCipherSuites string
 
+	EnableTkey bool
+
+	TkeySpeed int
+
+	TkeyPort  string
+
+
 	EnableUI bool
 
 	// Enable the raw endpoint
@@ -1124,6 +1135,36 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 					"file.",
 				err)
 		}
+	}
+
+	if conf.EnableTkey {
+		devPath := conf.TkeyPort
+		speed := conf.TkeySpeed
+		
+		if devPath == "" {
+			devPath, err = tkeyclient.DetectSerialPort(true)
+			if err != nil {
+				return nil, fmt.Errorf("detecting tkey serial port failed: %w", err)
+			}
+		}
+
+		if speed == 0 {
+			speed = tkeyclient.SerialSpeed
+		}
+
+		tk := tkeyclient.New()
+		if err = tk.Connect(devPath, tkeyclient.WithSpeed(speed)); err != nil {
+			return nil, fmt.Errorf("Could not open %s: %v\n", devPath, err)
+		}
+
+		c.tkeyDev = tkey.New(tk)
+
+		_, err := c.tkeyDev.GetAppNameVersion()
+		if err != nil {
+			return nil, fmt.Errorf("Could not get tkeys app name version: %v\n", err)
+		}
+
+		//tkeyclient.SilenceLogging()
 	}
 
 	// Construct a new AES-GCM barrier

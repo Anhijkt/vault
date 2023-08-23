@@ -67,6 +67,11 @@ type Config struct {
 	EnableUI    bool        `hcl:"-"`
 	EnableUIRaw interface{} `hcl:"ui"`
 
+	EnableTkey				bool		`hcl:"-"`
+	EnableTkeyRaw			interface{} `hcl:"enable_tkey"`
+	TkeySpeed				int			`hcl:"tkey_speed"`
+	TkeyPort				string		`hcl:"tkey_port"`
+
 	MaxLeaseTTL        time.Duration `hcl:"-"`
 	MaxLeaseTTLRaw     interface{}   `hcl:"max_lease_ttl,alias:MaxLeaseTTL"`
 	DefaultLeaseTTL    time.Duration `hcl:"-"`
@@ -333,6 +338,23 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.ClusterCipherSuites = c2.ClusterCipherSuites
 	}
 
+	result.EnableTkey = c.EnableTkey
+	if c2.EnableTkey {
+		result.EnableTkey = c2.EnableTkey
+	}
+
+	result.TkeySpeed = c.TkeySpeed
+	if c2.TkeySpeed != 0 {
+		result.TkeySpeed = c2.TkeySpeed
+	}
+
+	result.TkeyPort = c.TkeyPort
+	if c2.TkeyPort != "" {
+		result.TkeyPort = c2.TkeyPort
+	}
+
+
+
 	result.EnableUI = c.EnableUI
 	if c2.EnableUI {
 		result.EnableUI = c2.EnableUI
@@ -589,6 +611,12 @@ func ParseConfig(d, source string) (*Config, error) {
 	}
 	if result.DefaultLeaseTTLRaw != nil {
 		if result.DefaultLeaseTTL, err = parseutil.ParseDurationSecond(result.DefaultLeaseTTLRaw); err != nil {
+			return nil, err
+		}
+	}
+
+	if result.EnableTkeyRaw != nil {
+		if result.EnableTkey, err = parseutil.ParseBool(result.EnableTkeyRaw); err != nil {
 			return nil, err
 		}
 	}
@@ -1095,6 +1123,10 @@ func (c *Config) Sanitized() map[string]interface{} {
 		"disable_sentinel_trace":  c.DisableSentinelTrace,
 		"disable_cache":           c.DisableCache,
 		"disable_printable_check": c.DisablePrintableCheck,
+
+		"enable_tkey": c.EnableTkey,
+		"tkey_speed": c.TkeySpeed,
+		"tkey_port": c.TkeyPort,
 
 		"enable_ui": c.EnableUI,
 

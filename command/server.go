@@ -1288,6 +1288,16 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
+	// Override the Tkey enabling config by the environment variable
+	if enableTkey := os.Getenv("VAULT_TKEY"); enableTkey != "" {
+		var err error
+		coreConfig.EnableTkey, err = strconv.ParseBool(enableTkey)
+		if err != nil {
+			c.UI.Output("Error parsing the environment variable VAULT_TKEY")
+			return 1
+		}
+	}
+
 	// Override the UI enabling config by the environment variable
 	if enableUI := os.Getenv("VAULT_UI"); enableUI != "" {
 		var err error
@@ -2772,6 +2782,9 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		PluginDirectory:                config.PluginDirectory,
 		PluginFileUid:                  config.PluginFileUid,
 		PluginFilePermissions:          config.PluginFilePermissions,
+		EnableTkey:						config.EnableTkey,
+		TkeySpeed:						config.TkeySpeed,
+		TkeyPort:						config.TkeyPort,
 		EnableUI:                       config.EnableUI,
 		EnableRaw:                      config.EnableRawEndpoint,
 		EnableIntrospection:            config.EnableIntrospectionEndpoint,
