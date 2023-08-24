@@ -304,6 +304,9 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		combinedKey = c.generateRootProgress[0]
 		c.generateRootProgress = nil
 	} else {
+		if c.tkeyPresence {
+			combinedKey, err = c.tkeyDev.Combine(c.generateRootProgress)
+		}
 		combinedKey, err = shamir.Combine(c.generateRootProgress)
 		c.generateRootProgress = nil
 		if err != nil {

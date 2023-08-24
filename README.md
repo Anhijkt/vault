@@ -120,6 +120,32 @@ package by specifying the `TEST` variable. For example below, only
 $ make test TEST=./vault
 ...
 ```
+### Vault tkey support
+Currently this fork of vault support only Shamir's Combine/Split operations.
+Support for e2ee communications between tkeys will coming soon.
+
+Example of tkey stanza in vault config:
+
+```
+enable_tkey = true
+tkey_port   = "/dev/pts/4"
+tkey_speed  = 9600
+```
+tkey_port and tkey_speed are unnecessery, vault will detect it automatically if they are unset
+
+For running vault with tkey support you need:
+
+  - Tkey or qemu
+
+  ```sh
+  $ qemu-system-riscv32 -nographic -M tk1,fifo=chrid -bios firmware.elf -chardev pty,id=chrid
+  ```
+
+  - Tkey device app - you can use shamir_test (this step will be automated in next versions)
+
+  ```sh
+  $ tkey-runapp ./apps/shamir_test/app.bin --port /dev/pts/4
+  ```
 
 ### Importing Vault
 

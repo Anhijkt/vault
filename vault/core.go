@@ -251,6 +251,7 @@ type Core struct {
 
 	// Tillitis tkey 
 	tkeyDev tkey.Tkey
+	tkeyPresence bool
 	// The registry of builtin plugins is passed in here as an interface because
 	// if it's used directly, it results in import cycles.
 	builtinRegistry BuiltinRegistry
@@ -1158,11 +1159,11 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 		}
 
 		c.tkeyDev = tkey.New(tk)
-
-		_, err := c.tkeyDev.GetAppNameVersion()
+		c.tkeyPresence = true
+		/*_, err := c.tkeyDev.GetAppNameVersion()
 		if err != nil {
 			return nil, fmt.Errorf("Could not get tkeys app name version: %v\n", err)
-		}
+		}*/
 
 		//tkeyclient.SilenceLogging()
 	}
@@ -1709,7 +1710,11 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 		unsealKey = make([]byte, len(c.unlockInfo.Parts[0]))
 		copy(unsealKey, c.unlockInfo.Parts[0])
 	} else {
-		unsealKey, err = shamir.Combine(c.unlockInfo.Parts)
+		if c.tkeyPresence {
+			unsealKey, err = c.tkeyDev.Combine(c.unlockInfo.Parts)
+		}else {
+			unsealKey, err = shamir.Combine(c.unlockInfo.Parts)		
+		}
 		if err != nil {
 			return nil, &ErrInvalidKey{fmt.Sprintf("failed to compute combined key: %v", err)}
 		}

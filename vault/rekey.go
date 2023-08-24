@@ -386,7 +386,11 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 		recoveredKey = c.barrierRekeyConfig.RekeyProgress[0]
 		c.barrierRekeyConfig.RekeyProgress = nil
 	} else {
-		recoveredKey, err = shamir.Combine(c.barrierRekeyConfig.RekeyProgress)
+		if c.tkeyPresence {
+			recoveredKey, err = c.tkeyDev.Combine(c.barrierRekeyConfig.RekeyProgress)
+		}else {
+			recoveredKey, err = shamir.Combine(c.barrierRekeyConfig.RekeyProgress)
+		}
 		c.barrierRekeyConfig.RekeyProgress = nil
 		if err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to compute root key: %w", err).Error())
@@ -437,6 +441,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 	results := &RekeyResult{
 		Backup: c.barrierRekeyConfig.Backup,
 	}
+	var shares [][]byte
 	if c.seal.StoredKeysSupported() != seal.StoredKeysSupportedGeneric {
 		// Set result.SecretShares to the new key itself if only a single key
 		// part is used -- no Shamir split required.
@@ -444,7 +449,11 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 			results.SecretShares = append(results.SecretShares, newKey)
 		} else {
 			// Split the new key using the Shamir algorithm
-			shares, err := shamir.Split(newKey, c.barrierRekeyConfig.SecretShares, c.barrierRekeyConfig.SecretThreshold)
+			if c.tkeyPresence {
+				shares, err = c.tkeyDev.Split(newKey, c.barrierRekeyConfig.SecretShares, c.barrierRekeyConfig.SecretThreshold)
+			}else {
+				shares, err = shamir.Split(newKey, c.barrierRekeyConfig.SecretShares, c.barrierRekeyConfig.SecretThreshold)
+			}
 			if err != nil {
 				c.logger.Error("failed to generate shares", "error", err)
 				return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to generate shares: %w", err).Error())
@@ -664,7 +673,11 @@ func (c *Core) RecoveryRekeyUpdate(ctx context.Context, key []byte, nonce string
 		recoveryKey = c.recoveryRekeyConfig.RekeyProgress[0]
 		c.recoveryRekeyConfig.RekeyProgress = nil
 	} else {
-		recoveryKey, err = shamir.Combine(c.recoveryRekeyConfig.RekeyProgress)
+		if c.tkeyPresence {
+			recoveryKey, err = c.tkeyDev.Combine(c.recoveryRekeyConfig.RekeyProgress)
+		}else {
+			recoveryKey, err = shamir.Combine(c.recoveryRekeyConfig.RekeyProgress)
+		}
 		c.recoveryRekeyConfig.RekeyProgress = nil
 		if err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to compute recovery key: %w", err).Error())
@@ -689,11 +702,16 @@ func (c *Core) RecoveryRekeyUpdate(ctx context.Context, key []byte, nonce string
 		Backup: c.recoveryRekeyConfig.Backup,
 	}
 
+	var shares [][]byte
 	if c.recoveryRekeyConfig.SecretShares == 1 {
 		results.SecretShares = append(results.SecretShares, newRecoveryKey)
 	} else {
 		// Split the root key using the Shamir algorithm
-		shares, err := shamir.Split(newRecoveryKey, c.recoveryRekeyConfig.SecretShares, c.recoveryRekeyConfig.SecretThreshold)
+		if c.tkeyPresence {
+			shares, err = c.tkeyDev.Split(newRecoveryKey, c.recoveryRekeyConfig.SecretShares, c.recoveryRekeyConfig.SecretThreshold)
+		}else {
+			shares, err = shamir.Split(newRecoveryKey, c.recoveryRekeyConfig.SecretShares, c.recoveryRekeyConfig.SecretThreshold)
+		}
 		if err != nil {
 			c.logger.Error("failed to generate shares", "error", err)
 			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to generate shares: %w", err).Error())
@@ -876,7 +894,11 @@ func (c *Core) RekeyVerify(ctx context.Context, key []byte, nonce string, recove
 		recoveredKey = config.VerificationProgress[0]
 	} else {
 		var err error
-		recoveredKey, err = shamir.Combine(config.VerificationProgress)
+		if c.tkeyPresence {
+			recoveredKey, err = c.tkeyDev.Combine(config.VerificationProgress)
+		}else {
+			recoveredKey, err = shamir.Combine(config.VerificationProgress)
+		}
 		if err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to compute key for verification: %w", err).Error())
 		}

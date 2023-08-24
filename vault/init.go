@@ -136,11 +136,14 @@ func (c *Core) generateShares(sc *SealConfig) ([]byte, [][]byte, error) {
 		unsealKeys = append(unsealKeys, rootKey)
 	} else {
 		// Split the root key using the Shamir algorithm
-		shares, err := shamir.Split(rootKey, sc.SecretShares, sc.SecretThreshold)
+		if c.tkeyPresence  {
+			unsealKeys, err = c.tkeyDev.Split(rootKey, sc.SecretShares, sc.SecretThreshold)
+		}else {
+			unsealKeys, err = shamir.Split(rootKey, sc.SecretShares, sc.SecretThreshold)
+		}
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to generate barrier shares: %w", err)
 		}
-		unsealKeys = shares
 	}
 
 	// If we have PGP keys, perform the encryption
