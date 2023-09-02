@@ -470,6 +470,11 @@ func (c *OperatorInitCommand) init(client *api.Client, req *api.InitRequest) int
 	c.UI.Output("")
 	c.UI.Output(fmt.Sprintf("Initial Root Token: %s", resp.RootToken))
 
+	if resp.TkeyPubKey != "" {
+		c.UI.Output("")
+		c.UI.Output(fmt.Sprintf("Tkey Public Key: %s", resp.TkeyPubKey))
+	}
+
 	if len(resp.Keys) > 0 {
 		c.UI.Output("")
 		c.UI.Output(wrapAtLength(fmt.Sprintf(

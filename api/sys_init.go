@@ -74,4 +74,5 @@ type InitResponse struct {
 	RecoveryKeys    []string `json:"recovery_keys"`
 	RecoveryKeysB64 []string `json:"recovery_keys_base64"`
 	RootToken       string   `json:"root_token"`
+	TkeyPubKey		string	 `json:"tkey_pubkey_base64"`
 }

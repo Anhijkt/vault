@@ -252,6 +252,9 @@ type Core struct {
 	// Tillitis tkey 
 	tkeyDev tkey.Tkey
 	tkeyPresence bool
+
+	// Tkey PubKey
+	tkeyPubKey []byte
 	// The registry of builtin plugins is passed in here as an interface because
 	// if it's used directly, it results in import cycles.
 	builtinRegistry BuiltinRegistry
@@ -1160,6 +1163,11 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 		c.tkeyDev = tkey.New(tk)
 		c.tkeyPresence = true
+
+		c.tkeyPubKey, err = c.tkeyDev.GetPubKey()
+		if err != nil {
+			return nil, fmt.Errorf("Could not get tkeys pubkey: %v", err)
+		}
 		/*_, err := c.tkeyDev.GetAppNameVersion()
 		if err != nil {
 			return nil, fmt.Errorf("Could not get tkeys app name version: %v\n", err)

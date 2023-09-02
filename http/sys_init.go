@@ -100,6 +100,10 @@ func handleSysInitPut(core *vault.Core, w http.ResponseWriter, r *http.Request) 
 		RootToken: result.RootToken,
 	}
 
+	if result.TkeyPubKey != "" {
+		resp.TkeyPubKey = result.TkeyPubKey
+	}
+	
 	if len(result.RecoveryShares) > 0 {
 		resp.RecoveryKeys = make([]string, 0, len(result.RecoveryShares))
 		resp.RecoveryKeysB64 = make([]string, 0, len(result.RecoveryShares))
@@ -134,6 +138,7 @@ type InitResponse struct {
 	RecoveryKeys    []string `json:"recovery_keys,omitempty"`
 	RecoveryKeysB64 []string `json:"recovery_keys_base64,omitempty"`
 	RootToken       string   `json:"root_token"`
+	TkeyPubKey		string	 `json:"tkey_pubkey_base64,omitempty"`
 }
 
 type InitStatusResponse struct {

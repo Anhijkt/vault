@@ -17,6 +17,10 @@ var (
 	rspRecieveShare   = appCmd{0x08, "rspRecieveShare", tkeyclient.CmdLen4}
 	cmdSendKey		  = appCmd{0x09, "cmdSendKey", tkeyclient.CmdLen4}
 	rspSendKey		  = appCmd{0x0a, "rspSendKey", tkeyclient.CmdLen128}
+	cmdSendPubKey	  = appCmd{0x0b, "cmdSendPubKey", tkeyclient.CmdLen1}
+	rspSendPubKey	  = appCmd{0x0c, "rspSendPubKey", tkeyclient.CmdLen128}
+	cmdRecievePubKey  = appCmd{0x0d, "cmdRecievePubKey", tkeyclient.CmdLen128}
+	rspRecievePubKey  = appCmd{0x0e, "rspRecievePubKey", tkeyclient.CmdLen1}
 )
 
 type Tkey struct {
@@ -58,6 +62,60 @@ func (t Tkey) Close() error {
 		return fmt.Errorf("tk.Close: %w", err)
 	}
 	return nil
+}
+
+func (t Tkey) PutPubKey(pubKey []byte) error {
+	id := 2
+	tx, err := tkeyclient.NewFrameBuf(cmdRecievePubKey, id)
+	if err != nil {
+		return fmt.Errorf("NewFrameBuf: %w", err)
+	}
+
+	payload := make([]byte, cmdRecievePubKey.CmdLen().Bytelen()-1)
+	copied := copy(payload, pubKey)
+
+	// Add padding if not filling the payload buffer.
+	if copied < len(payload) {
+		padding := make([]byte, len(payload)-copied)
+		copy(payload[copied:], padding)
+	}
+
+	copy(tx[2:], payload)
+
+	tkeyclient.Dump("PutPubKey tx", tx)
+	if err = t.tk.Write(tx); err != nil {
+		return fmt.Errorf("Write: %w", err)
+	}
+
+	// Wait for reply
+	rx, _, err := t.tk.ReadFrame(rspRecievePubKey, id)
+	tkeyclient.Dump("rx", rx)
+	if err != nil {
+		return fmt.Errorf("ReadFrame: %w", err)
+	}
+	return nil
+
+}
+
+func (t Tkey) GetPubKey() ([]byte, error) {
+	id := 2
+	tx, err := tkeyclient.NewFrameBuf(cmdSendPubKey, id)
+	if err != nil {
+		return nil, fmt.Errorf("NewFrameBuf: %w", err)
+	}
+
+	tkeyclient.Dump("GetPubkey tx", tx)
+	if err = t.tk.Write(tx); err != nil {
+		return nil, fmt.Errorf("Write: %w", err)
+	}
+
+	rx, _, err := t.tk.ReadFrame(rspSendPubKey, id)
+	tkeyclient.Dump("GetPubKey rx", rx)
+	if err != nil {
+		return nil, fmt.Errorf("ReadFrame: %w", err)
+	}
+
+	return rx[2 : 2+32], nil
 }
 
 func (t Tkey) Combine(parts [][]byte) ([]byte, error) {

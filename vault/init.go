@@ -38,6 +38,7 @@ type InitResult struct {
 	SecretShares   [][]byte
 	RecoveryShares [][]byte
 	RootToken      string
+	TkeyPubKey	   string
 }
 
 var (
@@ -323,6 +324,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 
 	results := &InitResult{
 		SecretShares: [][]byte{},
+		TkeyPubKey:	"",
 	}
 
 	// If we are storing shares, pop them out of the returned results and push
@@ -406,6 +408,10 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 	}
 	results.RootToken = rootToken.ExternalID
 	c.logger.Info("root token generated")
+
+	if c.tkeyPresence {
+		results.TkeyPubKey = base64.StdEncoding.EncodeToString(c.tkeyPubKey)
+	}
 
 	if initParams.RootTokenPGPKey != "" {
 		_, encryptedVals, err := pgpkeys.EncryptShares([][]byte{[]byte(results.RootToken)}, []string{initParams.RootTokenPGPKey})
