@@ -21,6 +21,12 @@ var (
 	rspSendPubKey	  = appCmd{0x0c, "rspSendPubKey", tkeyclient.CmdLen128}
 	cmdRecievePubKey  = appCmd{0x0d, "cmdRecievePubKey", tkeyclient.CmdLen128}
 	rspRecievePubKey  = appCmd{0x0e, "rspRecievePubKey", tkeyclient.CmdLen1}
+	cmdCryptShare	  = appCmd{0x0f, "cmdCryptShare", tkeyclient.CmdLen128}
+	rspCryptShare	  = appCmd{0x10, "rspCryptShare", tkeyclient.CmdLen128}
+	cmdDecryptShare	  = appCmd{0x11, "cmdDecryptShare", tkeyclient.CmdLen128}
+	rspDecryptShare	  = appCmd{0x12, "rspDecryptShare", tkeyclient.CmdLen128}
+	cmdSendUnsealKey  = appCmd{0x13, "cmdSendUnsealKey", tkeyclient.CmdLen128}
+	rspSendUnsealKey  = appCmd{0x14, "rspSendUnsealKey", tkeyclient.CmdLen128}
 )
 
 type Tkey struct {
@@ -62,6 +68,111 @@ func (t Tkey) Close() error {
 		return fmt.Errorf("tk.Close: %w", err)
 	}
 	return nil
+}
+
+func (t Tkey) GetUnsealKey(share []byte) ([]byte, error) {
+	id := 2
+	tx, err := tkeyclient.NewFrameBuf(cmdSendUnsealKey, id)
+	if err != nil {
+		return nil, fmt.Errorf("NewFrameBuf: %w", err)
+	}
+
+	payload := make([]byte, cmdSendUnsealKey.CmdLen().Bytelen()-1)
+	copied := copy(payload, share)
+
+	// Add padding if not filling the payload buffer.
+	if copied < len(payload) {
+		padding := make([]byte, len(payload)-copied)
+		copy(payload[copied:], padding)
+	}
+
+	copy(tx[2:], payload)
+
+	tkeyclient.Dump("KeyUnsealKey tx", tx)
+	if err = t.tk.Write(tx); err != nil {
+		return nil, fmt.Errorf("Write: %w", err)
+	}
+
+	rx, _, err := t.tk.ReadFrame(rspSendUnsealKey, id)
+	if err != nil {
+		return nil, fmt.Errorf("ReadFrame: %w", err)
+	}
+
+	if rx[2] != tkeyclient.StatusOK {
+		return nil, fmt.Errorf("KeyUnseal NOK")
+	}
+
+	return rx[3: 32+3], nil
+
+}
+func (t Tkey) CryptShare(share []byte) ([]byte, error) {
+	id := 2
+	tx, err := tkeyclient.NewFrameBuf(cmdCryptShare, id)
+	if err != nil {
+		return nil, fmt.Errorf("NewFrameBuf: %w", err)
+	}
+
+	payload := make([]byte, cmdCryptShare.CmdLen().Bytelen()-1)
+	copied := copy(payload, share)
+
+	// Add padding if not filling the payload buffer.
+	if copied < len(payload) {
+		padding := make([]byte, len(payload)-copied)
+		copy(payload[copied:], padding)
+	}
+
+	copy(tx[2:], payload)
+
+	tkeyclient.Dump("CryptShare tx", tx)
+	if err = t.tk.Write(tx); err != nil {
+		return nil, fmt.Errorf("Write: %w", err)
+	}
+
+	rx, _, err := t.tk.ReadFrame(rspCryptShare, id)
+	if err != nil {
+		return nil, fmt.Errorf("ReadFrame: %w", err)
+	}
+
+	if rx[2] != tkeyclient.StatusOK {
+		return nil, fmt.Errorf("CryptShare NOK")
+	}
+
+	return rx[3: 73+3], nil
+}
+
+func (t Tkey) DecryptShare(share []byte) ([]byte, error) {
+	id := 2
+	tx, err := tkeyclient.NewFrameBuf(cmdDecryptShare, id)
+	if err != nil {
+		return nil, fmt.Errorf("NewFrameBuf: %w", err)
+	}
+
+	payload := make([]byte, cmdDecryptShare.CmdLen().Bytelen()-1)
+	copied := copy(payload, share)
+
+	// Add padding if not filling the payload buffer.
+	if copied < len(payload) {
+		padding := make([]byte, len(payload)-copied)
+		copy(payload[copied:], padding)
+	}
+
+	copy(tx[2:], payload)
+
+	tkeyclient.Dump("DecryptShare tx", tx)
+	if err = t.tk.Write(tx); err != nil {
+		return nil, fmt.Errorf("Write: %w", err)
+	}
+
+	rx, _, err := t.tk.ReadFrame(rspDecryptShare, id)
+	if err != nil {
+		return nil, fmt.Errorf("ReadFrame: %w", err)
+	}
+
+	if rx[2] != tkeyclient.StatusOK {
+		return nil, fmt.Errorf("CryptShare NOK")
+	}
+
+	return rx[3: 33+3], nil
 }
 
 func (t Tkey) PutPubKey(pubKey []byte) error {

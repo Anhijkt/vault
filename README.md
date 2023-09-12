@@ -121,8 +121,32 @@ $ make test TEST=./vault
 ...
 ```
 ### Vault tkey support
-Currently this fork of vault support only Shamir's Combine/Split operations.
-Support for e2ee communications between tkeys will coming soon.
+Support for e2ee communications (alpha version) :
+At the init of vault you will get tkey public key and unseal key shares
+
+```
+  $ vault operator init \
+                  -key-shares=3 \
+                  -key-threshold=2 
+...
+Unseal Key(b64) 1: ATt+oSBuYhMkcn91RYzGIoreVPHPXURIsAmsE/kdH23l
+Unseal Key(b64) 2: An3Gg/T+a7VebT5Ew7/7voozf9OGGE3McldEH9fhe273
+Unseal Key(b64) 3: A7aunbiObNeBkQGiSK4ZyopoZs1I0kqwxZQcG821rm/5
+
+Initial Root Token: hvs.byd2MjMJXQASd9aCz9j9kdOo
+
+Tkey Public Key: HSXfNktn7zV3yT4YvY2HVa+t9wtWPEGv6CiTBmeqai0=
+...
+```
+
+On the client side:
+
+```
+  $ ./shamir_test --port /dev/pts/6 --vault_addr http://127.0.0.1:8200 \
+                  --crypt_share An3Gg/T+a7VebT5Ew7/7voozf9OGGE3McldEH9fhe273  \
+                  --vault_pubkey HSXfNktn7zV3yT4YvY2HVa+t9wtWPEGv6CiTBmeqai0=
+                
+```
 
 Example of tkey stanza in vault config:
 

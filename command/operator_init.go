@@ -454,7 +454,7 @@ func (c *OperatorInitCommand) init(client *api.Client, req *api.InitRequest) int
 
 	for i, key := range resp.Keys {
 		if resp.KeysB64 != nil && len(resp.KeysB64) == len(resp.Keys) {
-			c.UI.Output(fmt.Sprintf("Unseal Key %d: %s", i+1, resp.KeysB64[i]))
+			c.UI.Output(fmt.Sprintf("Unseal Key(b64) %d: %s", i+1, resp.KeysB64[i]))
 		} else {
 			c.UI.Output(fmt.Sprintf("Unseal Key %d: %s", i+1, key))
 		}

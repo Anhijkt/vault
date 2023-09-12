@@ -75,6 +75,72 @@ func handleSysStepDown(core *vault.Core) http.Handler {
 	})
 }
 
+func handleTkeyUnseal(core *vault.Core) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "PUT":
+		case "POST":
+		default:
+			respondError(w, http.StatusMethodNotAllowed, nil)
+			return
+		}
+
+		var req TkeyUnsealRequest
+		if _, err := parseJSONRequest(core.PerfStandby(), r, w, &req); err != nil {
+			respondError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		if req.PubKey == "" {
+			respondError(
+				w, http.StatusBadRequest,
+				errors.New("'pub_key' must be specified in request body as JSON"))
+			return
+		}
+
+		if req.CryptedShare == "" {
+			respondError(
+				w, http.StatusBadRequest,
+				errors.New("'crypted_share' must be specified in request body as JSON"))
+			return
+		}
+
+		pubKey, err := base64.StdEncoding.DecodeString(req.PubKey)
+		if err != nil {
+			respondError(
+				w, http.StatusBadRequest,
+				errors.New("'pub_key' must be valid base64 string"))
+			return
+		}
+		cryptShare, err := base64.StdEncoding.DecodeString(req.CryptedShare)
+		if err != nil {
+			respondError(
+				w, http.StatusBadRequest,
+				errors.New("'crypted_share' must be valid base64 string"))
+			return
+		}
+
+		err = core.UnsealTkey(pubKey, cryptShare)
+		if err != nil {
+			switch {
+			case errwrap.ContainsType(err, new(vault.ErrInvalidKey)):
+			case errwrap.Contains(err, vault.ErrBarrierInvalidKey.Error()):
+			case errwrap.Contains(err, vault.ErrBarrierNotInit.Error()):
+			case errwrap.Contains(err, vault.ErrBarrierSealed.Error()):
+			case errwrap.Contains(err, consts.ErrStandby.Error()):
+			default:
+				respondError(w, http.StatusInternalServerError, err)
+				return
+			}
+			respondError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		// Return the seal status
+		handleSysSealStatusRaw(core, w, r)
+	})
+}
+
 func handleSysUnseal(core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -181,4 +247,8 @@ type UnsealRequest struct {
 	Key     string
 	Reset   bool
 	Migrate bool
+}
+type TkeyUnsealRequest struct {
+	PubKey			string `json:"pub_key"`
+	CryptedShare	string `json:"crypted_share"`
 }

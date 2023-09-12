@@ -1466,6 +1466,52 @@ func (c *Core) Unseal(key []byte) (bool, error) {
 	return !c.Sealed(), err
 }
 
+func (c *Core) UnsealTkey(pubKey, cryptShare []byte) error {
+	defer metrics.MeasureSince([]string{"core", "unseal"}, time.Now())
+
+	c.stateLock.Lock()
+	defer c.stateLock.Unlock()
+
+	ctx := context.Background()
+
+	c.logger.Debug("unseal key supplied")
+
+	// Explicitly check for init status. This also checks if the seal
+	// configuration is valid (i.e. non-nil).
+	init, err := c.Initialized(ctx)
+	if err != nil {
+		return err
+	}
+	if !init && !c.isRaftUnseal() {
+		return ErrNotInit
+	}
+
+	if !c.Sealed() {
+		return nil
+	}
+
+	sealToUse := c.seal
+
+	err = c.tkeyDev.PutPubKey(pubKey)
+	if err != nil {
+		return err
+	}
+
+	combinedKey, err := c.tkeyDev.GetUnsealKey(cryptShare)
+	if err != nil {
+		return err
+	}
+
+	if c.isRaftUnseal() {
+		return c.unsealWithRaft(combinedKey)
+	}
+	masterKey, err := c.unsealKeyToMasterKeyPreUnseal(ctx, sealToUse, combinedKey)
+	if err != nil {
+		return err
+	}
+	return c.unsealInternal(ctx, masterKey)
+	
+}
 // unseal takes a key fragment and attempts to use it to unseal Vault.
 // Vault may remain sealed afterwards even when no error is returned,
 // depending on whether enough key fragments were provided to meet the
